@@ -181,6 +181,9 @@ It's that easy! Now let's dive into all the configurable options.
 
 ## Troubleshooting
 
+- **Video Source gives authentication/other error**: 
+  - Try updating yt-dlp using pip install --upgrade yt-dlp
+
 - **No frames extracted**: 
   - Lower the quality and blur thresholds (e.g., `--quality 20 --blur 30`).
   - Check if the video file is corrupted or if yt-dlp failed to download it properly.
