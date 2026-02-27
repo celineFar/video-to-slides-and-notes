@@ -1,0 +1,35 @@
+# ─────────────────────────────────────────────
+# main.py configuration
+# Run: python3 main.py --config config.yaml
+# ─────────────────────────────────────────────
+
+# URL or absolute/relative path to a local video file (required)
+video_path: "downloaded_video_20251205_003252.mp4"
+
+# Label used for output folders: uploaded_videos/{video_title}/
+video_title: "Docker-Tutorial"
+
+# HH:MM:SS timestamps where the video is split into chunks.
+# Leave empty (or remove the key) to process the whole video as one chunk.
+split_timestamps:
+  - "00:17:45"
+  - "00:40:33"
+
+# Path to a pre-saved transcript pickle (.pkl). Required for local video files.
+# For YouTube URLs, leave as null to fetch the transcript automatically.
+transcript_path: "docker_transcript_8seconds.pkl"
+
+# Seconds between captured screenshots
+screenshot_interval: 2
+
+# Seconds per transcript chunk
+transcript_interval: 8
+
+# Maximum download resolution (e.g. 720, 1080). null = best available.
+max_resolution: null
+
+# Root folder for screenshot output
+screenshots_dir: "screenshots"
+
+# Print detailed progress logs
+verbose: false

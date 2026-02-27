@@ -22,4 +22,7 @@ tqdm
 
 # Optional: If you're using numpy or concurrency
 numpy
+# YAML config support
+pyyaml
+
 # NOTE: Standard library modules like `os`, `re`, `argparse`, `subprocess`, `sys`, `datetime`, `json`, `tempfile`, `concurrent.futures` don't need to be included.

@@ -185,6 +185,10 @@ def remove_black_bars(image):
     while right > left and all(is_black(pixels[right, y]) for y in range(top, bottom + 1)):
         right -= 1
 
+    # Guard: entirely black frame produces invalid bounds — return original
+    if top > bottom or left > right:
+        return image
+
     # Crop the image
     return image.crop((left, top, right + 1, bottom + 1))
 

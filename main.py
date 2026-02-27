@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
+import argparse
 import os
 import re
 import pickle
+import shutil
 import tempfile
+import yaml
 from typing import List, Tuple
 from collections import defaultdict
 from datetime import datetime
@@ -32,9 +35,9 @@ def download_timestamped_transcript(
         List of (start_time, end_time, text) tuples, or None on failure.
     """
 
-    # Case 1: source is NOT a URL (local file)
+    # Case 1: source is NOT a URL — caller must supply a transcript_path instead
     if not source.startswith(("http://", "https://", "www.")):
-        return source
+        return None
 
     # Case 2: source IS a URL
     video_url = source
@@ -69,14 +72,8 @@ def download_if_needed(
     Download a video if the source is a URL and return a sanitized title.
     """
     if not source.startswith(("http://", "https://", "www.")):
-        return source
-    if not source.startswith(("http://", "https://", "www.")):
         path = Path(source)
-
-        # title.mp4 -> title
-        title = path.stem
-
-        return title, str(path)
+        return path.stem, str(path)
 
     video_dir = "videos"
     os.makedirs(video_dir, exist_ok=True)
@@ -174,8 +171,12 @@ def get_timestamped_frames(
 # ✅ SCREENSHOT EXTRACTION
 # ✅ FIX: pass interval into get_timestamped_frames
 # ---------------------------
-def extract_screenshots(video_url: str, interval: int) -> List[Tuple[float, str]]:
-    output_dir = tempfile.mkdtemp(prefix="screenshots_")
+def extract_screenshots(video_url: str, interval: int, screenshots_dir: str = "screenshots") -> List[Tuple[float, str]]:
+    os.makedirs(screenshots_dir, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    folder_name = f"screenshots_interval{interval}s_{timestamp}"
+    output_dir = os.path.join(screenshots_dir, folder_name)
+    os.makedirs(output_dir, exist_ok=True)
 
     raw_results = run_extraction(
         video_url,
@@ -412,31 +413,122 @@ def create_slides():
             print(f"✅ PDF created: {output_pdf}")
 
 
-def download_if_needed(source, max_resolution=None, verbose=False):
-    if source.startswith(('http://', 'https://', 'www.')):
-        video_path = "videos"  # folder to store downloaded videos
-        #retrieve video title
+def parse_ts(ts: str) -> float:
+    h, m, s = ts.split(":")
+    return int(h) * 3600 + int(m) * 60 + float(s)
 
-        video_title = download_video(
-            source,
-            video path,
-            max_resolution,
-            verbose
-        )
-        sanitized_title = sanitize_filename(video_title)
-        return sanitized_title
+
+def load_config(path: str) -> dict:
+    with open(path) as f:
+        return yaml.safe_load(f)
 
 
 def main():
-    # video path from args or VIDEO-PATH
-    video_title, video_path = download_if_needed()
+    parser = argparse.ArgumentParser(
+        description="Generate slide PDFs from a video + transcript."
+    )
+    parser.add_argument("--config", default="config.yaml", help="Path to YAML config file (default: config.yaml)")
+    parser.add_argument("--video-path", help="Override video_path from config")
+    parser.add_argument("--video-title", help="Override video_title from config")
+    parser.add_argument("--screenshot-interval", type=int, help="Override screenshot_interval")
+    parser.add_argument("--transcript-interval", type=int, help="Override transcript_interval")
+    parser.add_argument("--max-resolution", type=int, help="Override max_resolution")
+    parser.add_argument("--verbose", action="store_true", help="Override verbose to True")
+    args = parser.parse_args()
 
-    # download transcript
+    cfg = load_config(args.config)
 
-    # timestamps from args or chapters
-    # a function that 
+    # CLI overrides (only when explicitly provided)
+    if args.video_path:          cfg["video_path"] = args.video_path
+    if args.video_title:         cfg["video_title"] = args.video_title
+    if args.screenshot_interval: cfg["screenshot_interval"] = args.screenshot_interval
+    if args.transcript_interval: cfg["transcript_interval"] = args.transcript_interval
+    if args.max_resolution:      cfg["max_resolution"] = args.max_resolution
+    if args.verbose:             cfg["verbose"] = True
 
-    # if video_chunking_timestamps: chunk video
+    # Resolve config values
+    video_path_raw      = cfg["video_path"]
+    video_title         = cfg["video_title"]
+    split_timestamps    = cfg.get("split_timestamps") or []
+    screenshot_interval = cfg.get("screenshot_interval", SCREENSHOT_INTERVAL)
+    transcript_interval = cfg.get("transcript_interval", TRANSCRIPT_INTERVAL)
+    max_resolution      = cfg.get("max_resolution", None)
+    verbose             = cfg.get("verbose", False)
+    screenshots_dir     = cfg.get("screenshots_dir", "screenshots")
+    transcript_path     = cfg.get("transcript_path", None)
+
+    # 1. Download video if URL, otherwise use local path
+    result = download_if_needed(video_path_raw, max_resolution=max_resolution, verbose=verbose)
+    if result is None:
+        print("ERROR: Could not resolve video path.")
+        return
+    _title, video_path = result
+
+    # 2. Load or fetch transcript
+    if transcript_path:
+        with open(transcript_path, "rb") as f:
+            transcript_chunks = pickle.load(f)
+        if verbose:
+            print(f"Loaded transcript from: {transcript_path}")
+    else:
+        transcript_chunks = download_timestamped_transcript(
+            video_path_raw, transcript_interval=transcript_interval, verbose=verbose
+        )
+        if transcript_chunks is None:
+            print("ERROR: Could not fetch transcript. For local videos, set transcript_path in config.yaml.")
+            return
+
+    # 3. Set up output dirs
+    base_dir  = os.path.join("uploaded_videos", video_title)
+    chunk_dir = os.path.join(base_dir, "chunks")
+    pdf_dir   = os.path.join(base_dir, "pdfs")
+    os.makedirs(chunk_dir, exist_ok=True)
+    os.makedirs(pdf_dir, exist_ok=True)
+
+    # 4. Chunk video at timestamps (skip if none provided)
+    if split_timestamps:
+        chunk(video_path=video_path, timestamps=split_timestamps, output_dir=chunk_dir)
+        print("✅ Video segments created.")
+        cut_points  = [0.0] + [parse_ts(t) for t in split_timestamps]
+        chunk_files = sorted(os.listdir(chunk_dir))
+    else:
+        # No chunking — treat the whole video as one segment
+        single_chunk = os.path.join(chunk_dir, os.path.basename(video_path))
+        shutil.copy2(video_path, single_chunk)
+        cut_points  = [0.0]
+        chunk_files = [os.path.basename(video_path)]
+
+    # 5. Process each chunk → screenshots → PDF
+    for idx, file in enumerate(chunk_files):
+        chunk_start     = cut_points[idx]
+        video_file_path = os.path.join(chunk_dir, file)
+        output_pdf      = os.path.join(pdf_dir, f"{video_title}_part_{idx}.pdf")
+
+        screenshots = extract_screenshots_cached(video_file_path, screenshot_interval, chunk_start)
+
+        used_matches = []
+        page_pdfs    = []
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            for i, (local_ts, img_path) in tqdm(
+                enumerate(screenshots, start=1), total=len(screenshots)
+            ):
+                abs_ts    = chunk_start + local_ts
+                match_obj = next((c for c in transcript_chunks if c[0] <= abs_ts < c[1]), None)
+                caption   = match_obj[2].strip() if match_obj else ""
+                used_matches.append((local_ts, abs_ts, match_obj))
+                page_pdf = os.path.join(tempdir, f"page_{i:03d}.pdf")
+                pdf_api.image_to_pdf(img_path, caption, page_pdf)
+                page_pdfs.append(page_pdf)
+
+            write_match_debug_file(
+                video_title, file, idx, chunk_start,
+                screenshots, transcript_chunks, used_matches,
+                interval=screenshot_interval,
+            )
+            pdf_api.merge_pdfs(page_pdfs, output_pdf)
+            print(f"✅ PDF created: {output_pdf}")
+
 
 if __name__ == "__main__":
     main()
