@@ -1,0 +1,25 @@
+opencv-python
+
+
+# LangChain and community integrations
+langchain
+langchain-community
+
+# YouTube video and transcript handling
+yt-dlp
+youtube-transcript-api
+
+# PDF handling
+PyPDF2
+reportlab
+
+# Image processing
+Pillow
+# opencv-python
+
+# CLI progress bars
+tqdm
+
+# Optional: If you're using numpy or concurrency
+numpy
+# NOTE: Standard library modules like `os`, `re`, `argparse`, `subprocess`, `sys`, `datetime`, `json`, `tempfile`, `concurrent.futures` don't need to be included.
