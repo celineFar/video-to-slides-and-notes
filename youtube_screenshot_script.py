@@ -748,7 +748,7 @@ def run_extraction(
         video_title = os.path.splitext(os.path.basename(video_path))[0]
         sanitized_title = sanitize_filename(video_title)
 
-    output_folder = sanitize_filename(output) if output else f"screenshots_{sanitized_title}_{timestamp}"
+    output_folder = output if output else f"screenshots_{sanitized_title}_{timestamp}"
 
     print(f"Video source: {video_path}")
     print(f"Extracting frames to: {output_folder}")
