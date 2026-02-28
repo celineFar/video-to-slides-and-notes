@@ -280,9 +280,17 @@ def create_slides():
         return int(h) * 3600 + int(m) * 60 + float(s)
 
     cut_points = [0.0] + [parse_ts(t) for t in timestamps]
-    # --- Create video chunks ---
-    chunk(video_path=video_path, timestamps=timestamps, output_dir=chunk_dir)
-    print("\n✅ Video segments created.")
+    # --- Create video chunks (skip if outputs already exist) ---
+    base, ext = os.path.splitext(os.path.basename(video_path))
+    expected_parts = [
+        os.path.join(chunk_dir, f"{base}_part{i:03d}{ext}")
+        for i in range(len(timestamps) + 1)
+    ]
+    if all(os.path.exists(p) for p in expected_parts):
+        print("⚡ Video segments already exist, skipping chunking.")
+    else:
+        chunk(video_path=video_path, timestamps=timestamps, output_dir=chunk_dir)
+        print("\n✅ Video segments created.")
 
     with open(transcript_path, "rb") as f:
         transcript_chunks = pickle.load(f)
