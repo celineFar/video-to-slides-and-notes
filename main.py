@@ -11,7 +11,7 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
-from chunking_4 import chunk
+from chunking_utils import chunk
 import pdf_api
 from youtube_screenshot_script import run_extraction, sanitize_filename, download_video
 from tqdm.auto import tqdm
@@ -441,8 +441,8 @@ def main():
     parser.add_argument("--config", default="config.yaml", help="Path to YAML config file (default: config.yaml)")
     parser.add_argument("--video-path", help="Override video_path from config")
     parser.add_argument("--video-title", help="Override video_title from config")
-    parser.add_argument("--screenshot-interval", type=int, help="Override screenshot_interval")
-    parser.add_argument("--transcript-interval", type=int, help="Override transcript_interval")
+    parser.add_argument("--screenshot-interval", type=float, help="Override screenshot_interval")
+    parser.add_argument("--transcript-interval", type=float, help="Override transcript_interval")
     parser.add_argument("--max-resolution", type=int, help="Override max_resolution")
     parser.add_argument("--verbose", action="store_true", help="Override verbose to True")
     args = parser.parse_args()
@@ -521,7 +521,11 @@ def main():
     for idx, file in enumerate(chunk_files):
         chunk_start     = cut_points[idx]
         video_file_path = os.path.join(chunk_dir, file)
-        output_pdf      = os.path.join(pdf_dir, f"{video_title}_part_{idx}.pdf")
+        if split_timestamps:
+            pdf_name = f"{video_title}_part_{idx}_ss{screenshot_interval}s_tr{transcript_interval}s.pdf"
+        else:
+            pdf_name = f"{video_title}_ss{screenshot_interval}s_tr{transcript_interval}s.pdf"
+        output_pdf = os.path.join(pdf_dir, pdf_name)
 
         if os.path.exists(output_pdf):
             print(f"⚡ PDF already exists, skipping: {output_pdf}")

@@ -4,7 +4,7 @@
 # ─────────────────────────────────────────────
 
 # URL or absolute/relative path to a local video file (required)
-video_path: "/home/ubuntu/youtube-project/docker-video-5-minutes.mp4"
+video_path: "uploads/docker-video-5-minutes.mp4"
 
 # Label used for output folders: uploaded_videos/{video_title}/
 video_title: "Docker-Tutorial"
@@ -18,10 +18,10 @@ video_title: "Docker-Tutorial"
 
 # Path to a pre-saved transcript pickle (.pkl). Required for local video files.
 # For YouTube URLs, leave as null to fetch the transcript automatically.
-transcript_path: "docker_transcript_9seconds.pkl"
+transcript_path: "uploads/docker_transcript_9seconds.pkl"
 
 # Seconds between captured screenshots
-screenshot_interval: 9
+screenshot_interval: 4.5
 
 # Seconds per transcript chunk
 transcript_interval: 9
