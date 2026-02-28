@@ -403,17 +403,19 @@ def extract_frames(video_path, output_folder, method='interval', interval_second
             
     if method != 'scene' or 'frames_to_process' not in locals():
         frames_to_process = []
-        for frame_number in range(0, total_frames, frame_interval):
+        sample_numbers = range(0, total_frames, frame_interval)
+        for frame_number in tqdm(sample_numbers, total=len(sample_numbers),
+                                 desc="Loading frames", unit="frame", disable=not verbose):
             video.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
             ret, frame = video.read()
             if ret:
                 frames_to_process.append((frame, output_folder, frame_number // frame_interval, quality_threshold, blur_threshold, detect_watermarks, watermark_threshold, use_png, use_gpu, gradfun, deblock, deband, verbose))
-        
+
         video.release()
-    
+
     skipped_frames = 0
     saved_frames = 0
-    
+
     if resume:
         # Load progress from a file
         progress_file = os.path.join(output_folder, "progress.json")
@@ -423,20 +425,22 @@ def extract_frames(video_path, output_folder, method='interval', interval_second
             skipped_frames = progress["skipped_frames"]
             saved_frames = progress["saved_frames"]
             frames_to_process = frames_to_process[progress["processed_frames"]:]
-    
-    with tqdm(total=len(frames_to_process), disable=not verbose) as pbar:
+
+    with tqdm(total=len(frames_to_process), desc="Extracting frames",
+              unit="frame", disable=not verbose) as pbar:
         if use_parallel:
             with ThreadPoolExecutor() as executor:
                 future_to_frame = {executor.submit(process_frame, args): args for args in frames_to_process}
                 for future in as_completed(future_to_frame):
                     result, saved = future.result()
-                    print(result)
+                    if verbose:
+                        pbar.write(result)
                     if saved:
                         saved_frames += 1
                     else:
                         skipped_frames += 1
                     pbar.update(1)
-                    
+
                     # Save progress
                     if resume:
                         progress = {
@@ -449,13 +453,14 @@ def extract_frames(video_path, output_folder, method='interval', interval_second
         else:
             for args in frames_to_process:
                 result, saved = process_frame(args)
-                print(result)
+                if verbose:
+                    pbar.write(result)
                 if saved:
                     saved_frames += 1
                 else:
                     skipped_frames += 1
                 pbar.update(1)
-                
+
                 # Save progress
                 if resume:
                     progress = {
