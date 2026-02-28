@@ -211,29 +211,31 @@ def find_matching_chunk(chunks, timestamp, eps=0.0001):
 # ✅ FIXED CACHING
 # ---------------------------
 def extract_screenshots_cached(video_file_path: str, interval: int, chunk_start: float):
-    cache_dir = "screenshot_cache"
+    cache_dir = "extracted_frames_cache"
     os.makedirs(cache_dir, exist_ok=True)
 
     safe_name = os.path.basename(video_file_path).replace(".", "_")
 
     cache_file = os.path.join(
         cache_dir,
-        f"{safe_name}_start_{int(chunk_start)}_screenshots.pkl"
+        f"{safe_name}_start_{int(chunk_start)}s_interval_{interval}s.pkl"
     )
 
     if os.path.exists(cache_file):
-        print(f"⚡ Loaded cached screenshots: {cache_file}")
         with open(cache_file, "rb") as f:
-            return pickle.load(f)
+            cached = pickle.load(f)
+        if cached["interval"] == interval and cached["chunk_start"] == chunk_start:
+            print(f"⚡ Loaded cached frames: {cache_file}")
+            return cached["frames"]
+        print(f"⚠️  Cache metadata mismatch, re-extracting.")
 
-    screenshots = extract_screenshots(video_file_path, interval)
+    frames = extract_screenshots(video_file_path, interval)
 
     with open(cache_file, "wb") as f:
-        pickle.dump(screenshots, f)
+        pickle.dump({"interval": interval, "chunk_start": chunk_start, "frames": frames}, f)
 
-    print(f"💾 Cached screenshots saved to: {cache_file}")
-    return screenshots
-
+    print(f"💾 Cached frames saved to: {cache_file}")
+    return frames
 
 # ---------------------------
 # ✅ TRANSCRIPT GAP + OVERLAP SCAN
@@ -360,9 +362,17 @@ def create_slides():
         return int(h) * 3600 + int(m) * 60 + float(s)
 
     cut_points = [0.0] + [parse_ts(t) for t in timestamps]
-    # --- Create video chunks ---
-    chunk(video_path=video_path, timestamps=timestamps, output_dir=chunk_dir)
-    print("\n✅ Video segments created.")
+    # --- Create video chunks (skip if outputs already exist) ---
+    base, ext = os.path.splitext(os.path.basename(video_path))
+    expected_parts = [
+        os.path.join(chunk_dir, f"{base}_part{i:03d}{ext}")
+        for i in range(len(timestamps) + 1)
+    ]
+    if all(os.path.exists(p) for p in expected_parts):
+        print("⚡ Video segments already exist, skipping chunking.")
+    else:
+        chunk(video_path=video_path, timestamps=timestamps, output_dir=chunk_dir)
+        print("\n✅ Video segments created.")
 
     with open(transcript_path, "rb") as f:
         transcript_chunks = pickle.load(f)
@@ -374,7 +384,7 @@ def create_slides():
         video_file_path = os.path.join(chunk_dir, file)
         output_pdf = os.path.join(pdf_dir, f"{video_title}_part_{idx}.pdf")
 
-        screenshots = extract_screenshots_cached(video_file_path, SCREENSHOT_INTERVAL, chunk_start)
+        screenshots = extract_screenshots_cached(video_file_path, VIDEO_INTERVAL, chunk_start)
 
         used_matches = []
         page_pdfs = []
@@ -406,11 +416,12 @@ def create_slides():
                 screenshots,
                 transcript_chunks,
                 used_matches,
-                interval=SCREENSHOT_INTERVAL
+                interval=VIDEO_INTERVAL
             )
 
             pdf_api.merge_pdfs(page_pdfs, output_pdf)
             print(f"✅ PDF created: {output_pdf}")
+
 
 
 def parse_ts(ts: str) -> float:
@@ -487,9 +498,17 @@ def main():
 
     # 4. Chunk video at timestamps (skip if none provided)
     if split_timestamps:
-        chunk(video_path=video_path, timestamps=split_timestamps, output_dir=chunk_dir)
-        print("✅ Video segments created.")
         cut_points  = [0.0] + [parse_ts(t) for t in split_timestamps]
+        base, ext = os.path.splitext(os.path.basename(video_path))
+        expected_parts = [
+            os.path.join(chunk_dir, f"{base}_part{i:03d}{ext}")
+            for i in range(len(split_timestamps) + 1)
+        ]
+        if all(os.path.exists(p) for p in expected_parts):
+            print("⚡ Video segments already exist, skipping chunking.")
+        else:
+            chunk(video_path=video_path, timestamps=split_timestamps, output_dir=chunk_dir)
+            print("✅ Video segments created.")
         chunk_files = sorted(os.listdir(chunk_dir))
     else:
         # No chunking — treat the whole video as one segment
@@ -503,6 +522,10 @@ def main():
         chunk_start     = cut_points[idx]
         video_file_path = os.path.join(chunk_dir, file)
         output_pdf      = os.path.join(pdf_dir, f"{video_title}_part_{idx}.pdf")
+
+        if os.path.exists(output_pdf):
+            print(f"⚡ PDF already exists, skipping: {output_pdf}")
+            continue
 
         screenshots = extract_screenshots_cached(video_file_path, screenshot_interval, chunk_start)
 

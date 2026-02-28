@@ -4,26 +4,27 @@
 # ─────────────────────────────────────────────
 
 # URL or absolute/relative path to a local video file (required)
-video_path: "downloaded_video_20251205_003252.mp4"
+video_path: "/home/ubuntu/youtube-project/docker-video-5-minutes.mp4"
 
 # Label used for output folders: uploaded_videos/{video_title}/
 video_title: "Docker-Tutorial"
 
 # HH:MM:SS timestamps where the video is split into chunks.
 # Leave empty (or remove the key) to process the whole video as one chunk.
-split_timestamps:
-  - "00:17:45"
-  - "00:40:33"
+# split_timestamps:
+#   - "00:05:0"
+#   - "00:17:45"
+#   - "00:40:33"
 
 # Path to a pre-saved transcript pickle (.pkl). Required for local video files.
 # For YouTube URLs, leave as null to fetch the transcript automatically.
-transcript_path: "docker_transcript_8seconds.pkl"
+transcript_path: "docker_transcript_9seconds.pkl"
 
 # Seconds between captured screenshots
-screenshot_interval: 2
+screenshot_interval: 9
 
 # Seconds per transcript chunk
-transcript_interval: 8
+transcript_interval: 9
 
 # Maximum download resolution (e.g. 720, 1080). null = best available.
 max_resolution: null
