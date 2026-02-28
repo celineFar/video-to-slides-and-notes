@@ -131,28 +131,31 @@ def find_matching_chunk(chunks, timestamp, eps=0.0001):
 # ✅ FIXED CACHING
 # ---------------------------
 def extract_screenshots_cached(video_file_path: str, interval: int, chunk_start: float):
-    cache_dir = "screenshot_cache"
+    cache_dir = "extracted_frames_cache"
     os.makedirs(cache_dir, exist_ok=True)
 
     safe_name = os.path.basename(video_file_path).replace(".", "_")
 
     cache_file = os.path.join(
         cache_dir,
-        f"{safe_name}_start_{int(chunk_start)}_screenshots.pkl"
+        f"{safe_name}_start_{int(chunk_start)}s_interval_{interval}s.pkl"
     )
 
     if os.path.exists(cache_file):
-        print(f"⚡ Loaded cached screenshots: {cache_file}")
         with open(cache_file, "rb") as f:
-            return pickle.load(f)
+            cached = pickle.load(f)
+        if cached["interval"] == interval and cached["chunk_start"] == chunk_start:
+            print(f"⚡ Loaded cached frames: {cache_file}")
+            return cached["frames"]
+        print(f"⚠️  Cache metadata mismatch, re-extracting.")
 
-    screenshots = extract_screenshots(video_file_path, interval)
+    frames = extract_screenshots(video_file_path, interval)
 
     with open(cache_file, "wb") as f:
-        pickle.dump(screenshots, f)
+        pickle.dump({"interval": interval, "chunk_start": chunk_start, "frames": frames}, f)
 
-    print(f"💾 Cached screenshots saved to: {cache_file}")
-    return screenshots
+    print(f"💾 Cached frames saved to: {cache_file}")
+    return frames
 
 
 # ---------------------------
