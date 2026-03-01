@@ -3,8 +3,12 @@
 # Run: python3 main.py --config config.yaml
 # ─────────────────────────────────────────────
 
-# URL or absolute/relative path to a local video file (required)
+# URL or absolute/relative path to a local video file (required).
+# Set to a YouTube URL to download the video automatically.
 video_path: "uploads/docker-video-5-minutes.mp4"
+
+# Directory where downloaded YouTube videos are saved
+video_dir: "videos"
 
 # Label used for output folders: processed_videos/{video_title}/
 video_title: "Docker-Tutorial"
@@ -19,6 +23,14 @@ video_title: "Docker-Tutorial"
 # Path to a pre-saved transcript pickle (.pkl). Required for local video files.
 # For YouTube URLs, leave as null to fetch the transcript automatically.
 transcript_path: "uploads/docker_transcript_9seconds.pkl"
+
+# Language preference order for auto-fetched YouTube transcripts.
+# The first available language in the list will be used.
+transcript_languages:
+  - "en"
+  - "zh-Hant"
+  - "zh-Hans"
+  - "ja"
 
 # Seconds between captured screenshots
 screenshot_interval: 4.5

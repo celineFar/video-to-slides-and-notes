@@ -27,6 +27,7 @@ def download_timestamped_transcript(
     source: str,
     transcript_interval: int = TRANSCRIPT_INTERVAL,
     video_dir: str = "videos",
+    languages: List[str] | None = None,
     verbose: bool = False,
 ) -> List[Tuple[float, float, str]] | None:
     """
@@ -54,6 +55,7 @@ def download_timestamped_transcript(
         transcript_chunks = transcript_api.get_chunked_transcript(
             video_url,
             transcript_interval,
+            languages=languages,
         )
     except Exception as e:
         if verbose:
@@ -76,7 +78,6 @@ def download_if_needed(
         path = Path(source)
         return path.stem, str(path)
 
-    video_dir = "videos"
     os.makedirs(video_dir, exist_ok=True)
 
     title = download_video(
@@ -498,9 +499,11 @@ def main():
     screenshot_interval = cfg.get("screenshot_interval", SCREENSHOT_INTERVAL)
     transcript_interval = cfg.get("transcript_interval", TRANSCRIPT_INTERVAL)
     max_resolution      = cfg.get("max_resolution", None)
-    verbose             = cfg.get("verbose", False)
-    screenshots_dir     = cfg.get("screenshots_dir", "screenshots")
-    transcript_path     = cfg.get("transcript_path", None)
+    verbose                = cfg.get("verbose", False)
+    screenshots_dir        = cfg.get("screenshots_dir", "screenshots")
+    transcript_path        = cfg.get("transcript_path", None)
+    video_dir              = cfg.get("video_dir", "videos")
+    transcript_languages   = cfg.get("transcript_languages", None)
 
     # YouTube URL for per-slide footnote links (with timestamp)
     if _is_youtube(video_path_raw):
@@ -509,7 +512,7 @@ def main():
         youtube_base_url = cfg.get("youtube_url") or None
 
     # 1. Download video if URL, otherwise use local path
-    result = download_if_needed(video_path_raw, max_resolution=max_resolution, verbose=verbose)
+    result = download_if_needed(video_path_raw, max_resolution=max_resolution, video_dir=video_dir, verbose=verbose)
     if result is None:
         print("ERROR: Could not resolve video path.")
         return
@@ -523,7 +526,8 @@ def main():
             print(f"Loaded transcript from: {transcript_path}")
     else:
         transcript_chunks = download_timestamped_transcript(
-            video_path_raw, transcript_interval=transcript_interval, verbose=verbose
+            video_path_raw, transcript_interval=transcript_interval,
+            video_dir=video_dir, languages=transcript_languages, verbose=verbose
         )
         if transcript_chunks is None:
             print("ERROR: Could not fetch transcript. For local videos, set transcript_path in config.yaml.")
