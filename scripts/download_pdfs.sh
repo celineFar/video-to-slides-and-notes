@@ -10,7 +10,7 @@
 
 # ── Configure these ──────────────────────────────────────────
 SERVER="ubuntu@YOUR_SERVER_IP"          # e.g. ubuntu@12.34.56.78
-REMOTE_DIR="/home/ubuntu/youtube-project/uploaded_videos"
+REMOTE_DIR="/home/ubuntu/youtube-project/processed_videos"
 LOCAL_DIR="$HOME/Downloads/youtube-pdfs"
 # ─────────────────────────────────────────────────────────────
 
@@ -27,7 +27,7 @@ fi
 echo ""
 echo "Available PDFs:"
 for i in "${!PDFS[@]}"; do
-  printf "  [%2d] %s\n" "$((i+1))" "${PDFS[$i]##*/uploaded_videos/}"
+  printf "  [%2d] %s\n" "$((i+1))" "${PDFS[$i]##*/processed_videos/}"
 done
 
 echo ""

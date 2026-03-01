@@ -6,7 +6,7 @@
 # URL or absolute/relative path to a local video file (required)
 video_path: "uploads/docker-video-5-minutes.mp4"
 
-# Label used for output folders: uploaded_videos/{video_title}/
+# Label used for output folders: processed_videos/{video_title}/
 video_title: "Docker-Tutorial"
 
 # HH:MM:SS timestamps where the video is split into chunks.
@@ -31,6 +31,12 @@ max_resolution: null
 
 # Root folder for screenshot output
 screenshots_dir: "screenshots"
+
+# YouTube URL for the video (only needed when video_path is a local file).
+# If video_path is already a YouTube URL, this field is ignored.
+# Each slide will include a clickable footnote link that jumps to the exact
+# timestamp of that slide in the video.
+youtube_url: "https://www.youtube.com/watch?v=pTFZFxd4hOI&t=2442s&pp=ugUEEgJlbg%3D%3D"
 
 # Print detailed progress logs
 verbose: false

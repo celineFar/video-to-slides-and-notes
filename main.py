@@ -6,7 +6,7 @@ import pickle
 import shutil
 import tempfile
 import yaml
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -346,7 +346,7 @@ def create_slides():
     timestamps = ['00:17:45', '00:40:33']
     video_title = 'docker_video'
 
-    base_dir = os.path.join("uploaded_videos", video_title)
+    base_dir = os.path.join("processed_videos", video_title)
     chunk_dir = os.path.join(base_dir, "chunks")
     pdf_dir = os.path.join(base_dir, "pdfs")
 
@@ -429,6 +429,19 @@ def parse_ts(ts: str) -> float:
     return int(h) * 3600 + int(m) * 60 + float(s)
 
 
+def _is_youtube(url: str) -> bool:
+    return "youtube.com" in url or "youtu.be" in url
+
+
+def make_youtube_url(base_url: str, seconds: float) -> str:
+    """Return base_url with a t= timestamp parameter set to the given seconds."""
+    t = int(seconds)
+    # Strip any existing t= parameter
+    clean = re.sub(r'[&?]t=\d+s?', '', base_url)
+    sep = '&' if '?' in clean else '?'
+    return f"{clean}{sep}t={t}"
+
+
 def load_config(path: str) -> dict:
     with open(path) as f:
         return yaml.safe_load(f)
@@ -445,6 +458,7 @@ def main():
     parser.add_argument("--transcript-interval", type=float, help="Override transcript_interval")
     parser.add_argument("--max-resolution", type=int, help="Override max_resolution")
     parser.add_argument("--verbose", action="store_true", help="Override verbose to True")
+    parser.add_argument("--youtube-url", help="YouTube URL to embed as a timestamped footnote in each slide")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
@@ -456,6 +470,7 @@ def main():
     if args.transcript_interval: cfg["transcript_interval"] = args.transcript_interval
     if args.max_resolution:      cfg["max_resolution"] = args.max_resolution
     if args.verbose:             cfg["verbose"] = True
+    if args.youtube_url:         cfg["youtube_url"] = args.youtube_url
 
     # Resolve config values
     video_path_raw      = cfg["video_path"]
@@ -467,6 +482,12 @@ def main():
     verbose             = cfg.get("verbose", False)
     screenshots_dir     = cfg.get("screenshots_dir", "screenshots")
     transcript_path     = cfg.get("transcript_path", None)
+
+    # YouTube URL for per-slide footnote links (with timestamp)
+    if _is_youtube(video_path_raw):
+        youtube_base_url: Optional[str] = video_path_raw
+    else:
+        youtube_base_url = cfg.get("youtube_url") or None
 
     # 1. Download video if URL, otherwise use local path
     result = download_if_needed(video_path_raw, max_resolution=max_resolution, verbose=verbose)
@@ -490,7 +511,7 @@ def main():
             return
 
     # 3. Set up output dirs
-    base_dir  = os.path.join("uploaded_videos", video_title)
+    base_dir  = os.path.join("processed_videos", video_title)
     chunk_dir = os.path.join(base_dir, "chunks")
     pdf_dir   = os.path.join(base_dir, "pdfs")
     os.makedirs(chunk_dir, exist_ok=True)
@@ -545,7 +566,8 @@ def main():
                 caption   = match_obj[2].strip() if match_obj else ""
                 used_matches.append((local_ts, abs_ts, match_obj))
                 page_pdf = os.path.join(tempdir, f"page_{i:03d}.pdf")
-                pdf_api.image_to_pdf(img_path, caption, page_pdf)
+                footnote = make_youtube_url(youtube_base_url, abs_ts) if youtube_base_url else None
+                pdf_api.image_to_pdf(img_path, caption, page_pdf, footnote_url=footnote)
                 page_pdfs.append(page_pdf)
 
             write_match_debug_file(

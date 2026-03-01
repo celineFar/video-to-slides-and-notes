@@ -61,14 +61,21 @@ def image_to_pdf(
     margin: float = 40,
     font_size: int = 62,
     line_spacing: int = 2,
-    caption_position: str = "above"
+    caption_position: str = "above",
+    footnote_url: str = None,
 ) -> str:
     """
     Generate a single-page PDF containing the given image (full size)
     and the caption text either above or below the image.
     Set caption_position to "above" (default) or "below".
+    If footnote_url is provided, a clickable hyperlink is rendered at the
+    bottom of the page (YouTube videos only).
     Returns the path to the created PDF.
     """
+    footnote_font_size = 18
+    footnote_margin = 12
+    footnote_height = (footnote_font_size + 2 * footnote_margin) if footnote_url else 0
+
     # Load image and measure
     img = Image.open(image_path)
     img_w, img_h = img.size
@@ -81,18 +88,18 @@ def image_to_pdf(
     # Determine page size and positions based on caption position
     if caption_position.lower() == "above":
         page_w = img_w + 2 * margin
-        page_h = margin + transcript_block_h + margin + img_h + margin
-        # Caption at top, image at bottom
+        page_h = footnote_height + margin + transcript_block_h + margin + img_h + margin
+        # Caption at top, image above footnote
         text_y_start = page_h - margin - line_height
         x_img = margin
-        y_img = margin
+        y_img = footnote_height + margin
     elif caption_position.lower() == "below":
         page_w = img_w + 2 * margin
-        page_h = margin + img_h + margin + transcript_block_h + margin
-        # Image at top, caption at bottom
+        page_h = footnote_height + margin + img_h + margin + transcript_block_h + margin
+        # Image at top, caption above footnote
         x_img = margin
         y_img = page_h - margin - img_h
-        text_y_start = margin + transcript_block_h - line_height
+        text_y_start = footnote_height + margin + transcript_block_h - line_height
     else:
         raise ValueError("caption_position must be 'above' or 'below'")
 
@@ -110,15 +117,24 @@ def image_to_pdf(
                           for line in lines), default=0)
     block_x = (page_w - max_line_width) / 2
     for i, line in enumerate(lines):
-        if caption_position.lower() == "above":
-            y = text_y_start - i * line_height
-        else:
-            y = text_y_start - i * line_height
+        y = text_y_start - i * line_height
         c.drawString(block_x, y, line)
 
     # Draw image
     c.drawImage(image_path, x_img, y_img, width=img_w, height=img_h,
                 preserveAspectRatio=True)
+
+    # Draw footnote URL as a clickable hyperlink
+    if footnote_url:
+        c.setFont("Helvetica", footnote_font_size)
+        c.setFillColor(HexColor("#0055CC"))
+        url_y = footnote_margin
+        c.drawString(margin, url_y, footnote_url)
+        url_w = pdfmetrics.stringWidth(footnote_url, "Helvetica", footnote_font_size)
+        c.linkURL(
+            footnote_url,
+            (margin, url_y - 2, margin + url_w, url_y + footnote_font_size),
+        )
 
     c.showPage()
     c.save()
