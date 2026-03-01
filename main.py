@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
 import os
 import re
 import pickle
@@ -8,7 +9,7 @@ import tempfile
 import yaml
 from typing import List, Tuple, Optional
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from chunking_utils import chunk
@@ -171,10 +172,11 @@ def get_timestamped_frames(
 # ✅ SCREENSHOT EXTRACTION
 # ✅ FIX: pass interval into get_timestamped_frames
 # ---------------------------
-def extract_screenshots(video_url: str, interval: int, screenshots_dir: str = "screenshots") -> List[Tuple[float, str]]:
+def extract_screenshots(video_url: str, interval: int, screenshots_dir: str = "screenshots", verbose: bool = False) -> List[Tuple[float, str]]:
     os.makedirs(screenshots_dir, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    folder_name = f"screenshots_interval{interval}s_{timestamp}"
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%SZ")
+    video_name = Path(video_url).stem
+    folder_name = f"{video_name}_interval{interval}s_{timestamp}"
     output_dir = os.path.join(screenshots_dir, folder_name)
     os.makedirs(output_dir, exist_ok=True)
 
@@ -189,7 +191,7 @@ def extract_screenshots(video_url: str, interval: int, screenshots_dir: str = "s
         blur=0,
         detect_watermarks=False,
         png=True,
-        verbose=True,
+        verbose=verbose,
         thumbnail=True
     )
 
@@ -201,8 +203,15 @@ def extract_screenshots(video_url: str, interval: int, screenshots_dir: str = "s
 # ✅ STRICT TRANSCRIPT MATCHING
 # ---------------------------
 def find_matching_chunk(chunks, timestamp, eps=0.0001):
+    # First pass: strict half-open intervals [start, end) — handles exact
+    # boundaries correctly so contiguous chunks never steal each other's frames.
     for start, end, text in chunks:
-        if start - eps <= timestamp < end + eps:
+        if start <= timestamp < end:
+            return text.strip()
+    # Second pass: epsilon fallback for floating-point near-boundary cases
+    # (e.g. the last frame of the last transcript chunk).
+    for start, end, text in chunks:
+        if start - eps <= timestamp <= end + eps:
             return text.strip()
     return ""
 
@@ -210,7 +219,7 @@ def find_matching_chunk(chunks, timestamp, eps=0.0001):
 # ---------------------------
 # ✅ FIXED CACHING
 # ---------------------------
-def extract_screenshots_cached(video_file_path: str, interval: int, chunk_start: float):
+def extract_screenshots_cached(video_file_path: str, interval: int, chunk_start: float, verbose: bool = False):
     cache_dir = "extracted_frames_cache"
     os.makedirs(cache_dir, exist_ok=True)
 
@@ -225,11 +234,15 @@ def extract_screenshots_cached(video_file_path: str, interval: int, chunk_start:
         with open(cache_file, "rb") as f:
             cached = pickle.load(f)
         if cached["interval"] == interval and cached["chunk_start"] == chunk_start:
-            print(f"⚡ Loaded cached frames: {cache_file}")
-            return cached["frames"]
-        print(f"⚠️  Cache metadata mismatch, re-extracting.")
+            frames = cached["frames"]
+            if all(os.path.exists(p) for _, p in frames):
+                print(f"⚡ Loaded cached frames: {cache_file}")
+                return frames
+            print(f"⚠️  Cached frame files missing from disk, re-extracting.")
+        else:
+            print(f"⚠️  Cache metadata mismatch, re-extracting.")
 
-    frames = extract_screenshots(video_file_path, interval)
+    frames = extract_screenshots(video_file_path, interval, verbose=verbose)
 
     with open(cache_file, "wb") as f:
         pickle.dump({"interval": interval, "chunk_start": chunk_start, "frames": frames}, f)
@@ -433,6 +446,12 @@ def _is_youtube(url: str) -> bool:
     return "youtube.com" in url or "youtu.be" in url
 
 
+def _url_hash(url: str) -> str:
+    """8-char hash of a YouTube base URL (t= stripped) for use in PDF filenames."""
+    clean = re.sub(r'[&?]t=\d+s?', '', url)
+    return hashlib.md5(clean.encode()).hexdigest()[:8]
+
+
 def make_youtube_url(base_url: str, seconds: float) -> str:
     """Return base_url with a t= timestamp parameter set to the given seconds."""
     t = int(seconds)
@@ -542,17 +561,18 @@ def main():
     for idx, file in enumerate(chunk_files):
         chunk_start     = cut_points[idx]
         video_file_path = os.path.join(chunk_dir, file)
+        url_tag = f"_url{_url_hash(youtube_base_url)}" if youtube_base_url else ""
         if split_timestamps:
-            pdf_name = f"{video_title}_part_{idx}_ss{screenshot_interval}s_tr{transcript_interval}s.pdf"
+            pdf_name = f"{video_title}_part_{idx}_ss{screenshot_interval}s_tr{transcript_interval}s{url_tag}.pdf"
         else:
-            pdf_name = f"{video_title}_ss{screenshot_interval}s_tr{transcript_interval}s.pdf"
+            pdf_name = f"{video_title}_ss{screenshot_interval}s_tr{transcript_interval}s{url_tag}.pdf"
         output_pdf = os.path.join(pdf_dir, pdf_name)
 
         if os.path.exists(output_pdf):
             print(f"⚡ PDF already exists, skipping: {output_pdf}")
             continue
 
-        screenshots = extract_screenshots_cached(video_file_path, screenshot_interval, chunk_start)
+        screenshots = extract_screenshots_cached(video_file_path, screenshot_interval, chunk_start, verbose=verbose)
 
         used_matches = []
         page_pdfs    = []

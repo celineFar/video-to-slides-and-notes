@@ -405,7 +405,7 @@ def extract_frames(video_path, output_folder, method='interval', interval_second
         frames_to_process = []
         sample_numbers = range(0, total_frames, frame_interval)
         for frame_number in tqdm(sample_numbers, total=len(sample_numbers),
-                                 desc="Loading frames", unit="frame", disable=not verbose):
+                                 desc="Loading frames", unit="frame"):
             video.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
             ret, frame = video.read()
             if ret:
@@ -427,7 +427,7 @@ def extract_frames(video_path, output_folder, method='interval', interval_second
             frames_to_process = frames_to_process[progress["processed_frames"]:]
 
     with tqdm(total=len(frames_to_process), desc="Extracting frames",
-              unit="frame", disable=not verbose) as pbar:
+              unit="frame") as pbar:
         if use_parallel:
             with ThreadPoolExecutor() as executor:
                 future_to_frame = {executor.submit(process_frame, args): args for args in frames_to_process}
