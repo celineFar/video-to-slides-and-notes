@@ -1,229 +1,188 @@
-# YouTube Screenshot Extractor (But Not Just for YouTube!) and Dataset Gatherer
+<p align="center">
+  <img src="Logo.png" alt="Video to Slides" width="280"/>
+</p>
 
-## Overview
+<h1 align="center">Video to Slides</h1>
 
-This Python script is a versatile tool for extracting high-quality screenshots from YouTube videos, local video files, or any other video source you can think of! It's particularly useful for preparing datasets for machine learning projects, such as training Loras or checkpoints, or just for grabbing that perfect frame from your favorite movie.
+<p align="center">
+  <strong>Automatically convert YouTube videos into beautiful PDF slide decks</strong>
+</p>
+
+<p align="center">
+  <a href="#features">Features</a> &bull;
+  <a href="#quick-start">Quick Start</a> &bull;
+  <a href="#usage">Usage</a> &bull;
+  <a href="#configuration">Configuration</a> &bull;
+  <a href="#project-structure">Project Structure</a> &bull;
+  <a href="#testing">Testing</a>
+</p>
+
+---
+
+**Video to Slides** extracts frames and transcripts from YouTube videos (or local video files) and generates captioned PDF slide decks — perfect for turning lectures, tutorials, and presentations into study materials.
 
 ## Features
 
-- Download YouTube and other videos using yt-dlp
-- Process local video files
-- Multiple frame extraction methods:
-  - Interval-based extraction
-  - All frames extraction
-  - Keyframe extraction
-  - Scene detection
-- Quality assessment of frames
-- Blur detection
-- Automatic removal of black bars
-- Basic watermark detection
-- Parallel processing for faster execution
-- GPU acceleration (if available)
-- Resume interrupted extractions
-- Generate thumbnail montages
-- Customizable output options (JPG or PNG)
-- Detailed logging and dry-run option
-- Load settings from a configuration file
-- Post-processing filters:
-  - Gradfun (reduce color banding, less aggressive)
-  - Deblock (reduce compression artifacts)
-  - Deband (reduce color banding, more aggressive)
+- **YouTube & local video support** — provide a URL to auto-download, or point to a local file
+- **Automatic transcript fetching** — pulls captions from YouTube with multi-language fallback (English, Chinese, Japanese)
+- **Intelligent frame extraction** — captures screenshots at configurable intervals with quality and blur filtering
+- **Clickable timestamp links** — each PDF slide includes a footnote linking to the exact moment in the video
+- **Video chunking** — split long videos at specific timestamps for multi-part slide decks
+- **Smart caching** — pickle-based caching avoids re-processing the same video segments
+- **YAML configuration** — simple config file with full CLI override support
 
-## Requirements
+## Quick Start
 
-- Python 3.6+
-- FFmpeg (required for keyframe extraction and some post-processing filters)
-- Dependencies listed in `requirements.txt`
-- PyCUDA (optional, only required for GPU acceleration. Minimum version: 2022.1)
+### Prerequisites
 
-## Installation
+- Python 3.10+
+- [FFmpeg](https://ffmpeg.org/download.html) installed and available in your PATH
 
-1. Clone this repository:
-   ```
-   git clone https://github.com/EnragedAntelope/youtube-screenshot-extractor.git
-   cd youtube-screenshot-extractor
-   ```
+### Installation
 
-2. Install the required dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
+```bash
+git clone <repo-url> && cd youtube-project
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-3. Install FFmpeg (required for keyframe extraction and some filters):
-   - Follow the instructions at: https://ffmpeg.org/download.html
+### Generate your first slides
 
-4. (Optional) Install PyCUDA for GPU acceleration:
-   ```
-   pip install pycuda>=2022.1
-   ```
-   Note: PyCUDA requires CUDA to be installed on your system. For installation instructions, refer to the [PyCUDA documentation](https://documen.tician.de/pycuda/).
+```bash
+# Edit config.yaml with your video URL or path
+python3 main.py --config config.yaml
+```
+
+Output PDFs will be saved to `processed_videos/<video_title>/pdfs/`.
 
 ## Usage
 
-Basic syntax:
-```
-python youtube-screenshot-script.py [SOURCE] [OPTIONS]
-```
+### From a YouTube URL
 
-Where `[SOURCE]` can be either a YouTube URL or a path to a local video file.
+Set `video_path` in `config.yaml` to a YouTube URL:
 
-Note: If you plan to use GPU acceleration (--use-gpu option), make sure you have PyCUDA installed.
-
-### Quick Start Example
-
-Extract frames every 5 seconds from a YouTube video and save them to a custom folder:
-```
-python youtube-screenshot-script.py https://www.youtube.com/watch?v=dQw4w9WgXcQ --output my_awesome_screenshots
+```yaml
+video_path: "https://www.youtube.com/watch?v=VIDEO_ID"
+video_title: "My-Lecture"
 ```
 
-It's that easy! Now let's dive into all the configurable options.
+```bash
+python3 main.py --config config.yaml
+```
 
-### Options
+The video and transcript will be downloaded automatically.
 
-- `--method {interval,all,keyframes,scene}`: Frame extraction method (default: interval)
-- `--interval INTERVAL`: Interval between frames in seconds (default: 5.0, only used with 'interval' method)
-- `--quality QUALITY`: Quality threshold for frame selection (0-100, default: 12.0)
-- `--blur BLUR`: Blur threshold for frame selection (default: 10.0)
-- `--detect-watermarks`: Enable basic watermark detection
-- `--watermark-threshold THRESHOLD`: Watermark detection sensitivity (0-1, default: 0.8)
-- `--max-resolution RESOLUTION`: Maximum resolution for YouTube video download (e.g., 720, 1080). Ignored for local files.
-- `--output OUTPUT`: Custom output folder name
-- `--png`: Save frames as PNG instead of JPG
-- `--disable-parallel`: Disable parallel processing of frames
-- `--use-gpu`: Use GPU acceleration if available
-- `--fast-scene`: Use fast mode for scene detection (less accurate results)
-- `--resume`: Resume an interrupted extraction process
-- `--thumbnail`: Generate a thumbnail montage of extracted frames
-- `--verbose`: Enable detailed logging
-- `--dry-run`: Show what would be done without actually processing
-- `--config CONFIG`: Load settings from a configuration file
-- `--gradfun`: Apply gradfun filter to reduce color banding (less aggressive, preserves more detail)
-- `--deblock`: Apply deblocking filter to reduce compression artifacts
-- `--deband`: Apply debanding filter to reduce color banding (more aggressive, better for severe banding)
+### From a local video file
 
-### Examples
+```yaml
+video_path: "uploads/my-video.mp4"
+video_title: "My-Lecture"
+transcript_path: "uploads/my_transcript.pkl"
+youtube_url: "https://www.youtube.com/watch?v=VIDEO_ID"  # optional, for timestamp links
+```
 
-1. Extract keyframes from a local video file:
-   ```
-   python youtube-screenshot-script.py path/to/your/video.mp4 --method keyframes
-   ```
+### Using the fetch scripts
 
-2. Use scene detection on a YouTube video with custom output folder:
-   ```
-   python youtube-screenshot-script.py https://www.youtube.com/watch?v=dQw4w9WgXcQ --method scene --output my_scene_shots
-   ```
+**Download directly on the server:**
 
-3. Extract frames every 10 seconds with a lower quality threshold and PNG output:
-   ```
-   python youtube-screenshot-script.py https://www.youtube.com/watch?v=dQw4w9WgXcQ --interval 10 --quality 30 --png
-   ```
+```bash
+python3 scripts/fetch_local.py "https://www.youtube.com/watch?v=VIDEO_ID"
+python3 main.py --config config.yaml
+```
 
-4. Use GPU acceleration and generate a thumbnail montage:
-   ```
-   python youtube-screenshot-script.py path/to/your/video.mp4 --use-gpu --thumbnail
-   ```
+**Download locally and upload to a remote server:**
 
-5. Download a YouTube video at a maximum resolution of 720p and extract frames:
-   ```
-   python youtube-screenshot-script.py https://www.youtube.com/watch?v=dQw4w9WgXcQ --max-resolution 720
-   ```
+```bash
+python3 scripts/fetch_and_upload.py --config scripts/fetch_config.yaml
+```
 
-6. Extract frames with post-processing filters:
-   ```
-   python youtube-screenshot-script.py path/to/your/video.mp4 --gradfun --deblock --deband
-   ```
+### CLI overrides
 
-## What to Expect
+Any config option can be overridden from the command line:
 
-- **Processing Time**: 
-  - The 'interval' and 'keyframes' methods are generally the fastest.
-  - The 'all' frames method can be time-consuming for longer videos.
-  - Scene detection is typically the most time-consuming method, especially for longer videos.
-  - GPU acceleration can significantly speed up processing for all methods.
-  - Using post-processing filters (gradfun, deblock, deband) will increase processing time.
-	
-- **Video Resolution**: 
-  - When downloading YouTube videos, the script will use the highest available quality by default. Use the `--max-resolution` option to limit the download quality if needed.
-  - For local video files, the original resolution is always used, and the `--max-resolution` option is ignored.
+```bash
+python3 main.py --config config.yaml \
+  --video-path "path/to/video.mp4" \
+  --screenshot-interval 2.0 \
+  --transcript-interval 12 \
+  --verbose
+```
 
-- **Output**: Frames are saved as JPG or PNG images in the specified output folder (or a default folder named after the video title).
+## Configuration
 
-- **Frame Filenames**: Follow the format `frame_NNNNNN_qXX_bYY[_watermarked].(jpg|png)`, where:
-  - `NNNNNN`: Frame number
-  - `XX`: Quality score (0-99, higher is better)
-  - `YY`: Blur score (higher numbers indicate less blur)
-  - `_watermarked`: Suffix added if a watermark is detected
+| Parameter | Default | Description |
+|---|---|---|
+| `video_path` | *required* | YouTube URL or path to a local video file |
+| `video_title` | *required* | Label used for output folder naming |
+| `video_dir` | `"videos"` | Directory for downloaded YouTube videos |
+| `screenshot_interval` | `4.5` | Seconds between captured frames |
+| `transcript_interval` | `9` | Seconds per transcript chunk |
+| `max_resolution` | `null` | Cap video download quality (e.g. `720`, `1080`) |
+| `split_timestamps` | `[]` | `HH:MM:SS` timestamps to split video into parts |
+| `transcript_path` | `null` | Path to a pre-saved transcript pickle |
+| `transcript_languages` | `["en", "zh-Hant", ...]` | Language fallback order for YouTube captions |
+| `screenshots_dir` | `"screenshots"` | Root folder for extracted frames |
+| `youtube_url` | `null` | YouTube link for PDF timestamp footnotes (local videos only) |
+| `verbose` | `false` | Enable detailed progress logging |
 
-- **Post-processing Filters**: 
-  - Gradfun is less aggressive and preserves more detail, suitable for subtle banding issues.
-  - Deband is more aggressive and better for severe banding problems, especially in dark scenes or sky gradients.
-  - Deblock helps reduce compression artifacts.
-  - Using filters will increase processing time, especially the FFmpeg-based filters (gradfun and deband).
+## Project Structure
 
-## Tips
+```
+youtube-project/
+├── main.py                        # Pipeline orchestrator
+├── youtube_screenshot_script.py   # Frame extraction engine
+├── pdf_api.py                     # PDF generation utilities
+├── transcript_api.py              # Transcript fetching
+├── chunking_utils.py              # Video segmentation with FFmpeg
+├── config.yaml                    # Runtime configuration
+├── requirements.txt               # Python dependencies
+│
+├── scripts/
+│   ├── fetch_and_upload.py        # Download & upload via SSH/rsync
+│   ├── fetch_local.py             # Download directly on server
+│   └── fetch_config.yaml          # Config template for fetch scripts
+│
+├── tests/                         # 62 pytest tests
+│   ├── test_cache_and_skip.py     # Caching & skip logic
+│   ├── test_youtube_url.py        # Timestamp URL generation
+│   └── test_chunking_and_sync.py  # Timestamp alignment & sync
+│
+├── processed_videos/              # Output PDFs
+├── screenshots/                   # Extracted frames
+├── extracted_frames_cache/        # Frame cache (pickle)
+├── uploads/                       # Input staging area
+└── debug_logs/                    # Match debug reports
+```
 
-- Start with the 'interval' method for quick results. Use scene detection for videos with distinct scene changes, but be prepared for longer processing times.
-- Use the `--dry-run` option to preview the extraction process without actually saving frames.
-- For large videos or long-running processes:
-  - Use the `--resume` option in case the process is interrupted.
-  - Consider using the `--max-resolution` option to limit download quality for faster processing and to conserve storage space.
-    - Note: The --max-resolution option only applies when downloading YouTube videos. It has no effect when processing local video files.
-- To optimize quality and performance:
-  - Experiment with different quality and blur thresholds to find the best balance for your needs. Start with lower thresholds (e.g., `--quality 30 --blur 50`) and adjust as needed.
-  - If processing is too slow, try disabling watermark detection or using GPU acceleration if available.
-  - Use the `--fast-scene` option for quicker (but less accurate) scene detection results.
-- When using post-processing filters:
-  - Be aware that applying filters will increase processing time, especially the FFmpeg-based filters (gradfun and deband).
-  - Choose between gradfun and deband based on your needs:
-    - Use gradfun for subtle banding issues or to preserve more detail.
-    - Use deband for more severe banding problems, especially in dark scenes or sky gradients.
-  - Experiment with different combinations of filters to achieve the desired output quality.
+## How It Works
 
-## Troubleshooting
+```
+Config + CLI args
+       ↓
+ Download video & transcript (or load from disk)
+       ↓
+ Split into chunks (optional, via FFmpeg)
+       ↓
+ For each chunk:
+   → Extract frames at regular intervals (with caching)
+   → Match each frame to its transcript segment by timestamp
+   → Generate a PDF page per frame with caption + timestamp link
+   → Merge pages into a final PDF
+```
 
-- **Video Source gives authentication/other error**: 
-  - Try updating yt-dlp using `pip install --upgrade yt-dlp`
+## Testing
 
-- **No frames extracted**: 
-  - Lower the quality and blur thresholds (e.g., `--quality 20 --blur 30`).
-  - Check if the video file is corrupted or if yt-dlp failed to download it properly.
+Run the full test suite:
 
-- **Keyframe extraction issues**: 
-  - Ensure FFmpeg is properly installed and accessible in your system PATH.
-  - Try updating FFmpeg to the latest version.
+```bash
+.venv/bin/pytest tests/ -v
+```
 
-- **Scene detection extremely slow or crashing**:
-  - Use the `--fast-scene` option for quicker but less accurate results.
-  - Try processing a shorter segment of the video first to test.
-  - Ensure you have enough RAM available.
+The suite covers caching logic, URL timestamp injection, transcript-to-frame matching, chunk boundary handling, and PDF naming conventions — all without requiring live YouTube calls.
 
-- **GPU acceleration not working**:
-  - Verify that you have CUDA-compatible GPU and the necessary CUDA libraries installed.
-  - Check if PyCUDA is installed correctly (`pip install pycuda`).
-  - If issues persist, fall back to CPU processing by removing the `--use-gpu` flag.
+## Acknowledgements
 
-- **Watermark detection producing false positives**:
-  - Adjust the watermark threshold (e.g., `--watermark-threshold 0.9` for stricter detection).
-  - If unnecessary, disable watermark detection by removing the `--detect-watermarks` flag.
+This project is a fork of [youtube-screenshot-extractor](https://github.com/EnragedAntelope/youtube-screenshot-extractor) by EnragedAntelope, extended with transcript matching, PDF slide generation, video chunking, and smart caching.
 
-- **Process dies unexpectedly for large videos**:
-  - Use the `--resume` option to continue from where it left off.
-  - Try processing the video in smaller segments.
-  - Ensure you have enough free disk space.
-
-- **Low quality or blurry output**:
-  - Increase the quality and blur thresholds.
-  - Check if the source video is of sufficient quality.
-
-- **Post-processing filters not working**:
-  - Ensure FFmpeg is installed and accessible in your system PATH for gradfun and deband filters.
-  - Check if OpenCV (cv2) is installed correctly for the deblock filter.
-  - If issues persist with specific filters, try using them individually to isolate the problem.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+>>>>>>> development

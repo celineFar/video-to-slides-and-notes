@@ -1,6 +1,29 @@
-yt-dlp>=2023.3.4
-opencv-python>=4.7.0
-numpy>=1.24.0
-Pillow>=9.5.0
-scenedetect>=0.6.1
-tqdm>=4.65.0
+opencv-python
+
+
+# LangChain and community integrations
+langchain
+langchain-community
+
+# YouTube video and transcript handling
+yt-dlp
+youtube-transcript-api
+
+# PDF handling
+PyPDF2
+reportlab
+
+# Image processing
+Pillow
+# opencv-python
+
+# CLI progress bars
+tqdm
+
+# Optional: If you're using numpy or concurrency
+numpy
+# YAML config support
+pyyaml
+
+# NOTE: Standard library modules like `os`, `re`, `argparse`, `subprocess`, `sys`, `datetime`, `json`, `tempfile`, `concurrent.futures` don't need to be included.
+>>>>>>> development
