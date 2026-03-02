@@ -184,5 +184,3 @@ The suite covers caching logic, URL timestamp injection, transcript-to-frame mat
 ## Acknowledgements
 
 This project is a fork of [youtube-screenshot-extractor](https://github.com/EnragedAntelope/youtube-screenshot-extractor) by EnragedAntelope, extended with transcript matching, PDF slide generation, video chunking, and smart caching.
-
->>>>>>> development
