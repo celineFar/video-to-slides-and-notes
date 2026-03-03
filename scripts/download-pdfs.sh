@@ -9,7 +9,7 @@
 # ─────────────────────────────────────────────────────────────
 
 # ── Configure these ──────────────────────────────────────────
-SERVER="ubuntu@YOUR_SERVER_IP"          # e.g. ubuntu@12.34.56.78
+SERVER="ubuntu@yt"          # e.g. ubuntu@12.34.56.78
 REMOTE_DIR="/home/ubuntu/youtube-project/processed_videos"
 LOCAL_DIR="$HOME/Downloads/youtube-pdfs"
 # ─────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
-# -------------------------------------------------------------
-# upload.ps1  -  Upload videos and transcripts to the server
+# ─────────────────────────────────────────────────────────────
+# upload.ps1  –  Upload videos and transcripts to the server
 #
 # Run from your local Windows machine (PowerShell):
 #   .\upload.ps1
@@ -8,12 +8,12 @@
 #   .\upload.ps1 "C:\Videos\lecture.mp4" "C:\transcripts\notes.pkl"
 #
 # Set SERVER below to your server's user@host or IP.
-# -------------------------------------------------------------
+# ─────────────────────────────────────────────────────────────
 
-$SERVER     = "ubuntu@YOUR_SERVER_IP_OR_HOSTNAME"
+$SERVER    = "ubuntu@yt"
 $REMOTE_DIR = "/home/ubuntu/youtube-project/uploads"
 
-# -- File picker ----------------------------------------------
+# ── File picker ──────────────────────────────────────────────
 function Pick-Files {
     Add-Type -AssemblyName System.Windows.Forms
 
@@ -22,6 +22,7 @@ function Pick-Files {
     $dialog.Filter      = "Videos and Transcripts|*.mp4;*.mkv;*.mov;*.avi;*.webm;*.pkl|All Files|*.*"
     $dialog.Multiselect = $true
 
+    # Show dialog (bring to front)
     $dummy = New-Object System.Windows.Forms.Form
     $dummy.TopMost = $true
 
@@ -31,7 +32,7 @@ function Pick-Files {
     return @()
 }
 
-# -- Collect files (CLI args or picker) -----------------------
+# ── Collect files (CLI args or picker) ───────────────────────
 if ($args.Count -gt 0) {
     $files = $args
 } else {
@@ -42,7 +43,7 @@ if ($args.Count -gt 0) {
     }
 }
 
-# -- Upload each file -----------------------------------------
+# ── Upload each file ─────────────────────────────────────────
 $allowed = @("mp4","mkv","mov","avi","webm","pkl")
 
 foreach ($file in $files) {
@@ -51,16 +52,16 @@ foreach ($file in $files) {
         continue
     }
 
-    $ext  = [System.IO.Path]::GetExtension($file).TrimStart(".").ToLower()
+    $ext = [System.IO.Path]::GetExtension($file).TrimStart(".").ToLower()
     $name = [System.IO.Path]::GetFileName($file)
 
     if ($allowed -contains $ext) {
-        Write-Host "Uploading: $name -> ${SERVER}:${REMOTE_DIR}/"
+        Write-Host "Uploading: $name → ${SERVER}:${REMOTE_DIR}/"
         scp $file "${SERVER}:${REMOTE_DIR}/"
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "[OK] Done: $name"
+            Write-Host "✓ Done: $name"
         } else {
-            Write-Host "[FAILED] $name"
+            Write-Host "✗ Failed: $name"
         }
     } else {
         Write-Host "Skipping unsupported file type: $name (.$ext)"

@@ -1,0 +1,43 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# fetch_config.yaml  –  Default settings for fetch_and_upload.py
+# Run: python3 scripts/fetch_and_upload.py --config scripts/fetch_config.yaml
+#
+# Any value set here can still be overridden by passing the matching CLI flag.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# YouTube URL to download (required — no default).
+url: "https://www.youtube.com/watch?v=S7XpTAnSDL4&t=2740s&pp=ygUMZ2l0IHR1dG9yaWFs0gcJCa4KAYcqIYzv"
+
+# Maximum download resolution (e.g. 720, 1080). null = best available.
+max_resolution: null
+
+# Seconds per transcript chunk.
+transcript_interval: 9
+
+# Language preference order for the transcript.
+# The first available language in the list will be used.
+languages:
+  - "en"
+  - "zh-Hant"
+  - "zh-Hans"
+  - "ja"
+
+# SSH destination for rsync upload (user@host or SSH alias).
+server: "ubuntu@yt"
+
+# Remote directory to upload files into.
+remote_dir: "/home/ubuntu/youtube-project/uploads"
+
+# Remote path for generated config upload.
+# This file will be overwritten on each run.
+remote_config_path: "/home/ubuntu/youtube-project/config.yaml"
+
+# Path to a Netscape-format cookies.txt file for yt-dlp authentication.
+# Leave as null to download without cookies.
+cookies: null
+
+# Set to true to skip the upload step and keep files locally.
+skip_upload: false
+
+# Local directory for downloaded files.
+output_dir: "downloads"
